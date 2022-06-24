@@ -321,8 +321,8 @@ class ClassGenerator
         $generatedProp = new PropertyGenerator($prop->getName());
         $generatedProp->setVisibility(PropertyGenerator::VISIBILITY_PUBLIC);
 
-        // For non-nullable property there's no default value
-        if ($prop->getNullable() !== true && $prop->getDefault() === null) {
+        // For nullable default, omit it
+        if ($prop->getDefault() === null) {
             $generatedProp->omitDefaultValue();
         }
 
@@ -343,22 +343,24 @@ class ClassGenerator
 
         $type = $prop->getType();
 
+        $nullableAddition = $prop->getNullable() === true ? '|null' : '';
+
         if ($type && $type instanceof PHPClassOf) {
             $tt = $type->getArg()->getType();
-            $tag->setTypes($tt->getPhpType() . '[]');
+            $tag->setTypes($tt->getPhpType() . '[]' . $nullableAddition);
             if ($p = $tt->isSimpleType()) {
                 if (($t = $p->getType())) {
-                    $tag->setTypes($t->getPhpType() . '[]');
+                    $tag->setTypes($t->getPhpType() . '[]' . $nullableAddition);
                 }
             }
             $generatedProp->setDefaultValue($type->getArg()->getDefault());
         } elseif ($type) {
             if ($type->isNativeType()) {
-                $tag->setTypes($type->getPhpType());
+                $tag->setTypes($type->getPhpType() . $nullableAddition);
             } elseif (($p = $type->isSimpleType()) && ($t = $p->getType())) {
-                $tag->setTypes($t->getPhpType());
+                $tag->setTypes($t->getPhpType() . $nullableAddition);
             } else {
-                $tag->setTypes($prop->getType()->getPhpType());
+                $tag->setTypes($prop->getType()->getPhpType() . $nullableAddition);
             }
         }
         $docBlock->setTag($tag);
@@ -447,13 +449,15 @@ class ClassGenerator
         $type = $prop->getType();
         $result = [];
 
+        $nullableAddition = $prop->getNullable() === true ? '|null' : '';
+
         if ($type instanceof PHPClassOf) {
-            $result['hint'] = 'array';
+            $result['hint'] = 'array' . $nullableAddition;
             $tt = $type->getArg()->getType();
-            $result['doc'] = $tt->getPhpType() . '[]';
+            $result['doc'] = $tt->getPhpType() . '[]' . $nullableAddition;
             if ($p = $tt->isSimpleType()) {
                 if (($t = $p->getType())) {
-                    $result['doc'] = $t->getPhpType() . '[]';
+                    $result['doc'] = $t->getPhpType() . '[]' . $nullableAddition;
                 }
             }
 
@@ -461,11 +465,11 @@ class ClassGenerator
         }
 
         if ($type->isNativeType()) {
-            $result['hint'] = $type->getPhpType();
+            $result['hint'] = $type->getPhpType() . $nullableAddition;
         } elseif (($p = $type->isSimpleType()) && ($t = $p->getType())) {
-            $result['hint'] = $t->getPhpType();
+            $result['hint'] = $t->getPhpType() . $nullableAddition;
         } else {
-            $result['hint'] =$prop->getType()->getPhpType();
+            $result['hint'] =$prop->getType()->getPhpType() . $nullableAddition;
         }
         $result['doc'] = $result['hint'];
 
