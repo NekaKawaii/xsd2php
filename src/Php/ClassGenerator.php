@@ -30,6 +30,9 @@ class ClassGenerator
             }
         }
 
+        // Adding constructor params
+        $this->handleConstructorParameter($class, $type);
+
         if (count($type->getProperties()) === 1 && $type->hasProperty('__value')) {
             return false;
         }
@@ -308,14 +311,20 @@ class ClassGenerator
             $this->handleAdder($generator, $prop, $class);
         }
 
-        $this->handleGetter($generator, $prop, $class);
-        $this->handleSetter($generator, $prop, $class);
+        // Remove getters and setters prior to constructor parameters
+        //$this->handleGetter($generator, $prop, $class);
+        //$this->handleSetter($generator, $prop, $class);
     }
 
     private function handleProperty(Generator\ClassGenerator $class, PHPProperty $prop)
     {
         $generatedProp = new PropertyGenerator($prop->getName());
-        $generatedProp->setVisibility(PropertyGenerator::VISIBILITY_PRIVATE);
+        $generatedProp->setVisibility(PropertyGenerator::VISIBILITY_PUBLIC);
+
+        // For non-nullable property there's no default value
+        if ($prop->getNullable() !== true && $prop->getDefault() === null) {
+            $generatedProp->omitDefaultValue();
+        }
 
         $class->addPropertyFromGenerator($generatedProp);
 
@@ -371,7 +380,7 @@ class ClassGenerator
         if ($extends = $type->getExtends()) {
             if ($p = $extends->isSimpleType()) {
                 $this->handleProperty($class, $p);
-                $this->handleValueMethod($class, $p, $extends);
+                //$this->handleValueMethod($class, $p, $extends);
             } else {
                 $class->setExtendedClass($extends->getFullName());
 
@@ -388,5 +397,78 @@ class ClassGenerator
         if ($this->handleBody($class, $type)) {
             return $class;
         }
+    }
+
+    private function handleConstructorParameter(Generator\ClassGenerator $class, PHPClass $type)
+    {
+        $constructor = new MethodGenerator('__construct');
+        $docblock = new DocBlockGenerator();
+        $docblock->setWordWrap(false);
+        $constructor->setDocBlock($docblock);
+        $class->addMethodFromGenerator($constructor);
+
+        $constructorBody = '';
+
+        if ($extends = $type->getExtends()) {
+            if ($p = $extends->isSimpleType()) {
+                $propertyTypes = $this->getTypeOfProperty($p);
+
+                $paramTag = new ParamTag($p->getName(), $propertyTypes['doc'], $p->getDoc());
+                $docblock->setTag($paramTag);
+                $parameter = new ParameterGenerator($p->getName(), $propertyTypes['hint']);
+                $constructor->setParameter($parameter);
+
+                $constructorBody .= '$this->' . $p->getName() . ' = $' . $p->getName() . ';' . PHP_EOL;
+            }
+        }
+
+        foreach ($type->getProperties() as $property) {
+
+            $propertyTypes = $this->getTypeOfProperty($property);
+
+            $paramTag = new ParamTag($property->getName(), $propertyTypes['doc'], $property->getDoc());
+            $docblock->setTag($paramTag);
+            $parameter = new ParameterGenerator($property->getName(), $propertyTypes['hint']);
+            $constructor->setParameter($parameter);
+
+            $constructorBody .= '$this->' . $property->getName() . ' = $' . $property->getName() . ';' . PHP_EOL;
+
+        }
+
+        $constructor->setBody($constructorBody);
+    }
+
+    /**
+
+     * @return array{hint: string, doc: string}
+     */
+    private function getTypeOfProperty(PHPProperty $prop)
+    {
+        $type = $prop->getType();
+        $result = [];
+
+        if ($type instanceof PHPClassOf) {
+            $result['hint'] = 'array';
+            $tt = $type->getArg()->getType();
+            $result['doc'] = $tt->getPhpType() . '[]';
+            if ($p = $tt->isSimpleType()) {
+                if (($t = $p->getType())) {
+                    $result['doc'] = $t->getPhpType() . '[]';
+                }
+            }
+
+            return $result;
+        }
+
+        if ($type->isNativeType()) {
+            $result['hint'] = $type->getPhpType();
+        } elseif (($p = $type->isSimpleType()) && ($t = $p->getType())) {
+            $result['hint'] = $t->getPhpType();
+        } else {
+            $result['hint'] =$prop->getType()->getPhpType();
+        }
+        $result['doc'] = $result['hint'];
+
+        return $result;
     }
 }

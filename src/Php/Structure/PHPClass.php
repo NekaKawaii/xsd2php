@@ -68,6 +68,11 @@ class PHPClass
         return '\\' . $this->getFullName();
     }
 
+    public function isArray(): bool
+    {
+        return !$this->getNamespace() && $this->getName() === 'array';
+    }
+
     public function isNativeType()
     {
         return !$this->getNamespace() && in_array($this->getName(), [
