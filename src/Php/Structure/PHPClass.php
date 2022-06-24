@@ -59,7 +59,8 @@ class PHPClass
     {
         if (!$this->getNamespace()) {
             if ($this->isNativeType()) {
-                return $this->getName();
+                // Replace mixed with string due to XML is text per se
+                return $this->getName() === 'mixed' ? 'string' : $this->getName();
             }
 
             return '\\' . $this->getName();
