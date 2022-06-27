@@ -1,11 +1,15 @@
 {
-  "name": "goetas-webservices/xsd2php",
+  "name": "nekakawaii/xsd2php",
   "description": "Convert XSD  (XML Schema) definitions into PHP classes and JMS metadata",
   "type": "library",
   "authors": [
     {
       "name": "Asmir Mustafic",
       "email" : "goetas@gmail.com"
+    },
+    {
+      "name": "Dmitriy Tkachenko",
+      "email" : "dimddr87@gmail.com"
     }
   ],
   "keywords": [
@@ -43,11 +47,6 @@
   "autoload-dev": {
     "psr-4": {
       "GoetasWebservices\\Xsd\\XsdToPhp\\Tests\\": "tests/"
-    }
-  },
-  "extra": {
-    "branch-alias": {
-      "dev-master": "0.4-dev"
     }
   },
   "bin": [
